@@ -1,0 +1,9 @@
+* text=auto
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.md text eol=lf
+# Preserve original coursework files as supplied.
+example_Koroush_Depthframe.cc -text
+Stero_config_Koroush.yaml -text
+stereo_camera_config.yaml -text
+*.jpeg binary

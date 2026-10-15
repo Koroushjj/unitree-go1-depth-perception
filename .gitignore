@@ -1,0 +1,13 @@
+build*/
+.vs/
+.vscode/
+*.o
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.a
+*.so
+*.tar
+*.zip
+__pycache__/

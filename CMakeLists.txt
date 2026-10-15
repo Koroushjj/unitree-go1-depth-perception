@@ -1,0 +1,47 @@
+cmake_minimum_required(VERSION 3.18)
+project(unitree_go1_depth_perception LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(test_depth_policy test_depth_policy.cpp)
+    add_test(NAME depth_policy COMMAND test_depth_policy)
+endif()
+
+option(BUILD_CAMERA_APP "Build the Linux application requiring UnitreeCameraSDK" ON)
+set(UNITREE_CAMERA_SDK "" CACHE PATH "Path to the UnitreeCameraSDK v1.1.0 root")
+if(BUILD_CAMERA_APP)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        message(FATAL_ERROR "Camera app requires Linux. Use -DBUILD_CAMERA_APP=OFF for portable tests.")
+    endif()
+    # The prebuilt SDK also references OpenCV modules beyond our display code.
+    # Follow the upstream SDK's full OpenCV library set.
+    find_package(OpenCV 4 REQUIRED)
+    find_package(Threads REQUIRED)
+    find_library(UDEV_LIBRARY NAMES udev REQUIRED)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+        set(SDK_ARCH amd64)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        set(SDK_ARCH arm64)
+    else()
+        message(FATAL_ERROR "Supported SDK architectures: x86_64 and aarch64")
+    endif()
+    if(NOT EXISTS "${UNITREE_CAMERA_SDK}/include/UnitreeCameraSDK.hpp")
+        message(FATAL_ERROR "Set UNITREE_CAMERA_SDK to the SDK root containing include/ and lib/.")
+    endif()
+    foreach(LIB unitree_camera tstc_V4L2_xu_camera systemlog)
+        if(NOT EXISTS "${UNITREE_CAMERA_SDK}/lib/${SDK_ARCH}/lib${LIB}.a")
+            message(FATAL_ERROR "Missing SDK static library: lib${LIB}.a (${SDK_ARCH})")
+        endif()
+    endforeach()
+    add_executable(depth_monitor depth_monitor.cpp)
+    target_include_directories(depth_monitor PRIVATE "${UNITREE_CAMERA_SDK}/include" ${OpenCV_INCLUDE_DIRS})
+    target_compile_definitions(depth_monitor PRIVATE OPENCV_VERSION_4)
+    target_link_libraries(depth_monitor PRIVATE
+        "${UNITREE_CAMERA_SDK}/lib/${SDK_ARCH}/libunitree_camera.a"
+        "${UNITREE_CAMERA_SDK}/lib/${SDK_ARCH}/libtstc_V4L2_xu_camera.a"
+        "${UNITREE_CAMERA_SDK}/lib/${SDK_ARCH}/libsystemlog.a"
+        ${UDEV_LIBRARY} ${OpenCV_LIBS} Threads::Threads)
+endif()
